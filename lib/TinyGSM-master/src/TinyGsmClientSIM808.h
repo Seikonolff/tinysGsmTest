@@ -44,8 +44,8 @@ class TinyGsmSim808 : public TinyGsmSim800,
   // get the RAW GPS output
   // works only with ans SIM808 V2
   String getGPSrawImpl() {
-    sendAT(GF("+CGNSINF"));
-    if (waitResponse(10000L, GF(AT_NL "+CGNSINF:")) != 1) { return ""; }
+    sendAT(GF("+CGNSINFO"));
+    if (waitResponse(10000L, GF(AT_NL "+CGNSINFO:")) != 1) { return ""; }
     String res = stream.readStringUntil('\n');
     waitResponse();
     res.trim();
@@ -58,8 +58,8 @@ class TinyGsmSim808 : public TinyGsmSim800,
                   int* vsat = 0, int* usat = 0, float* accuracy = 0,
                   int* year = 0, int* month = 0, int* day = 0, int* hour = 0,
                   int* minute = 0, int* second = 0) {
-    sendAT(GF("+CGNSINF"));
-    if (waitResponse(10000L, GF(AT_NL "+CGNSINF:")) != 1) { return false; }
+    sendAT(GF("+CGNSINFO"));
+    if (waitResponse(10000L, GF(AT_NL "+CGNSINFO:")) != 1) { return false; }
 
     streamSkipUntil(',');                // GNSS run status
     if (streamGetIntBefore(',') == 1) {  // fix status

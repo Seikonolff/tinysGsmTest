@@ -443,13 +443,17 @@ class TinyGsmSim7600 : public TinyGsmModem<TinyGsmSim7600>,
  protected:
   // enable GPS
   bool enableGPSImpl() {
-    sendAT(GF("+CGPS=1"));
+    //sendAT(GF("+CGPS=1"));
+    sendAT(GF("+CGNSSPWR=1,1,1"));
+    if (waitResponse() != 1) { return false; }
+    sendAT(GF("+CGPSCOLD=1,1"));
     if (waitResponse() != 1) { return false; }
     return true;
   }
 
   bool disableGPSImpl() {
-    sendAT(GF("+CGPS=0"));
+    //sendAT(GF("+CGPS=0"));
+    sendAT(GF("+CGNSSPWR=0,1,1"));
     if (waitResponse() != 1) { return false; }
     return true;
   }
@@ -547,6 +551,78 @@ class TinyGsmSim7600 : public TinyGsmModem<TinyGsmSim7600>,
     waitResponse();
     return false;
   }
+
+  bool getBetterGPSImpl(float* lat, float* lon, float* speed = 0, float* alt = 0, int* vsat = 0, int* usat = 0, float* accuracy = 0, int* year = 0, int* month = 0, int* day = 0, int* hour = 0, int* minute = 0, int* second = 0) {
+  sendAT("AT+CGNSINFO");
+  if (waitResponse("+CGNSINFO:") != 1) {
+    return false;
+  }
+
+  uint8_t fixMode = streamGetIntBefore(',');
+  if (fixMode == 1 || fixMode == 2 || fixMode == 3) {
+    float ilat = 0;
+    char north;
+    float ilon = 0;
+    char east;
+    float ispeed = 0;
+    float ialt = 0;
+    int ivsat = 0;
+    int iusat = 0;
+    float iaccuracy = 0;
+    int iyear = 0;
+    int imonth = 0;
+    int iday = 0;
+    int ihour = 0;
+    int imin = 0;
+    float secondWithSS = 0;
+
+    streamSkipUntil(',');
+    streamSkipUntil(',');
+    streamSkipUntil(',');
+    ilat = streamGetFloatBefore(',');
+    north = stream.readStringUntil(',').charAt(0);
+    ilon = streamGetFloatBefore(',');
+    east = stream.readStringUntil(',').charAt(0);
+
+    iday = streamGetIntLength(2);
+    imonth = streamGetIntLength(2);
+    iyear = streamGetIntBefore(',');
+
+    ihour = streamGetIntLength(2);
+    imin = streamGetIntLength(2);
+    secondWithSS = streamGetFloatBefore(',');
+
+    ialt = streamGetFloatBefore(',');
+    ispeed = streamGetFloatBefore(',');
+    streamSkipUntil(',');
+    iaccuracy = streamGetFloatBefore(',');
+    streamSkipUntil(',');
+    streamSkipUntil('\n');
+
+    if (lat != nullptr)
+      *lat = (floor(ilat / 100) + fmod(ilat, 100.) / 60) * (north == 'N' ? 1 : -1);
+    if (lon != nullptr)
+      *lon = (floor(ilon / 100) + fmod(ilon, 100.) / 60) * (east == 'E' ? 1 : -1);
+    if (speed != nullptr) *speed = ispeed;
+    if (alt != nullptr) *alt = ialt;
+    if (vsat != nullptr) *vsat = ivsat;
+    if (usat != nullptr) *usat = iusat;
+    if (accuracy != nullptr) *accuracy = iaccuracy;
+    if (iyear < 2000) iyear += 2000;
+    if (year != nullptr) *year = iyear;
+    if (month != nullptr) *month = imonth;
+    if (day != nullptr) *day = iday;
+    if (hour != nullptr) *hour = ihour;
+    if (minute != nullptr) *minute = imin;
+    if (second != nullptr) *second = static_cast<int>(secondWithSS);
+
+    waitResponse();
+    return true;
+  }
+
+  waitResponse();
+  return false;
+}
 
   /**
    *  CGNSSMODE: <gnss_mode>,<dpo_mode>
